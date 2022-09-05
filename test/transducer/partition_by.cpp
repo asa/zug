@@ -164,6 +164,9 @@ TEST_CASE("partition_by, more examples 02")
                                     b_t{.t = 3}},
                                    {a_t{.t = 4}, b_t{.t = 5}, a_t{.t = 6}}});
     }
+
+    CHECK(std::variant_size_v<meas_t> == 2);
+
     WHEN("v is a variant, and we filter to just get a_t types")
     {
         auto partition_func = [ts](a_t x) {
@@ -179,14 +182,27 @@ TEST_CASE("partition_by, more examples 02")
 
         auto just_a =
             zug::filter([](auto x) { return std::holds_alternative<a_t>(x); }) |
-            zug::map([](auto x) { return std::get<a_t>(x); }) |
-            partition_by(partition_func);
+            zug::map([](auto x) { return std::get<a_t>(x); });
 
-        auto res = into_vector(just_a, v);
+        WHEN("just the a_t types into a vector")
+        {
+            auto res = into_vector(just_a, v);
+            CHECK(res.size() == 6);
 
-        CHECK(res == decltype(res){{a_t{.t = 1}, a_t{.t = 1}},
-                                   {a_t{.t = 2}, a_t{.t = 3}},
-                                   {a_t{.t = 4}, a_t{.t = 6}}});
+            WHEN("then we partition")
+            {
+                auto res2 = into_vector(partition_by(partition_func), res);
+                CHECK(res2.size() == 3);
+            }
+        }
+        WHEN("we partition in one go")
+        {
+            auto res = into_vector(just_a | partition_by(partition_func), v);
+            CHECK(res.size() == 3);
+            CHECK(res == decltype(res){{a_t{.t = 1}, a_t{.t = 1}},
+                                       {a_t{.t = 2}, a_t{.t = 3}},
+                                       {a_t{.t = 4}, a_t{.t = 6}}});
+        }
     }
 }
 
